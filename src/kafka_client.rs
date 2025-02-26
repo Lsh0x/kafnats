@@ -32,8 +32,17 @@ pub async fn run_consumer(
     println!("Kafka consumer started. Listening to all topics. Forwarding messages to NATS subject 'kafka.messages'...");
 
     loop {
-        while let Ok(m) = consumer.recv().await {
-            if let Some(payload_result) = m.payload_view::<str>() {
+        let m = if std::env::var("TESTING").is_ok() {
+            match tokio::time::timeout(std::time::Duration::from_secs(1), consumer.recv()).await {
+                Ok(Ok(msg)) => Ok(msg),
+                Ok(Err(e)) => Err(e),
+                Err(_) => break,
+            }
+        } else {
+            consumer.recv().await
+        };
+        if let Ok(msg) = m {
+            if let Some(payload_result) = msg.payload_view::<str>() {
                 match payload_result {
                     Ok(payload) => {
                         println!("Received message: {}", payload);
@@ -46,7 +55,10 @@ pub async fn run_consumer(
             } else {
                 println!("No payload");
             }
-            consumer.commit_message(&m, CommitMode::Async).unwrap();
+            consumer.commit_message(&msg, CommitMode::Async).unwrap();
+        } else {
+            break;
         }
     }
+    Ok(())
 }

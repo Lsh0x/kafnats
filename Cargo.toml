@@ -8,3 +8,4 @@ rdkafka = { version = "0.28", features = ["tokio"] }
 tokio = { version = "1", features = ["full"] }
 async-nats = "0.39"
 dotenv = "0.15"
+thiserror = "1.0"
